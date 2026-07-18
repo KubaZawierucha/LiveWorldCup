@@ -8,8 +8,8 @@ public interface Scoreboard {
     // do we need the ID, or can the match be identified by the participants?
     void updateScore(MatchParticipant home, MatchParticipant visitor, long matchId);
 
-    // same here, how should we identify the match? maybe two methods?
-    void finishMatch(long matchId);
+    // the request won't have access to the internal ID, the match should be identified by the participants
+    void finishMatch(MatchParticipant home, MatchParticipant visitor);
 
     List<Match> getSummary();
 }
