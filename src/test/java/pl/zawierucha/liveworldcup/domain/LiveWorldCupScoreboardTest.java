@@ -1,4 +1,4 @@
-package pl.zawierucha.liveworldcup;
+package pl.zawierucha.liveworldcup.domain;
 
 import org.junit.jupiter.api.Test;
 
@@ -47,11 +47,11 @@ public class LiveWorldCupScoreboardTest {
         home = new MatchParticipant("Mexico", 1);
 
         // when:
-        scoreboard.updateScore(home, visitor, 0L);
+        scoreboard.updateScore(home, visitor);
 
         // then:
         assertTrue(scoreboard.getSummary().stream()
-                .anyMatch(match -> match.home().score() == 1 && match.visitor().score() == 0)
+                .anyMatch(match -> match.home().getScore() == 1 && match.visitor().getScore() == 0)
         );
     }
 }
