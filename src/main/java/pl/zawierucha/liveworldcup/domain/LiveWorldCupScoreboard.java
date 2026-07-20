@@ -1,8 +1,13 @@
 package pl.zawierucha.liveworldcup.domain;
 
+import pl.zawierucha.liveworldcup.domain.exceptions.NoActiveMatchException;
+import pl.zawierucha.liveworldcup.api.exceptions.ParticipantAlreadyInMatchException;
+import pl.zawierucha.liveworldcup.domain.exceptions.ParticipantNotFoundInMatchException;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -11,48 +16,55 @@ public class LiveWorldCupScoreboard implements Scoreboard {
 
     public Map<MatchId, Match> matches = new HashMap<>();
 
-    // decided to use domain-like objects instead of plain strings/integers - some kind of mapper before walking into
-    // domain would be needed
     @Override
     public void startMatch(MatchParticipant home, MatchParticipant visitor) {
-        Set<String> currentlyPlayingTeams = matches.values()
-                .stream()
-                .flatMap(match -> Stream.of(match.getHomeName(), match.getVisitorName()))
-                .collect(Collectors.toSet());
+        Set<ParticipantName> currentlyPlayingTeams = matches.values().stream().flatMap(match -> Stream.of(match.getHome(), match.getVisitor())).collect(Collectors.toSet());
 
         if (currentlyPlayingTeams.contains(home.getName()) || currentlyPlayingTeams.contains(visitor.getName())) {
-            throw new IllegalArgumentException("One of the teams is already playing.");
+            throw new ParticipantAlreadyInMatchException();
         }
 
-        MatchId newMatchId = MatchId.fromMatchParticipants(home.getName(), visitor.getName());
+        MatchId newMatchId = MatchId.fromMatchParticipants(home, visitor);
         Match newMatch = new Match(home, visitor);
         matches.put(newMatchId, newMatch);
     }
 
     @Override
-    public void updateScore(MatchParticipant home, MatchParticipant visitor) {
-        // theoretically, the score always starts at zero, so update should be already > 0;
-        // however we can simulate the VAR decision, where the first goal is canceled
-        if (home.getScore() < 0 || visitor.getScore() < 0) {
-            throw new IllegalArgumentException("Scores must be non-negative.");
+    public void increaseScore(MatchId matchId, ParticipantName participantName) {
+        Match currentMatch = matches.get(matchId);
+        if (currentMatch == null) {
+            throw new NoActiveMatchException();
         }
 
-        MatchId matchId = MatchId.fromMatchParticipants(home.getName(), visitor.getName());
-        matches.compute(matchId, (id, match) -> {
-            if (match == null) {
-                throw new IllegalArgumentException("No active match found.");
-            }
-            match.home().setScore(home.getScore());
-            match.visitor().setScore(visitor.getScore());
-            return match;
-        });
+        if (currentMatch.getHome().equals(participantName)) {
+            currentMatch.home().increaseScore();
+        } else if (currentMatch.getVisitor().equals(participantName)) {
+            currentMatch.visitor().increaseScore();
+        } else {
+            throw new ParticipantNotFoundInMatchException();
+        }
     }
 
     @Override
-    public void finishMatch(MatchParticipant home, MatchParticipant visitor) {
-        MatchId matchId = MatchId.fromMatchParticipants(home.getName(), visitor.getName());
+    public void decreaseScore(MatchId matchId, ParticipantName participantName) {
+        Match currentMatch = matches.get(matchId);
+        if (currentMatch == null) {
+            throw new NoActiveMatchException();
+        }
+
+        if (currentMatch.getHome().equals(participantName)) {
+            currentMatch.home().decreaseScore();
+        } else if (currentMatch.getVisitor().equals(participantName)) {
+            currentMatch.visitor().decreaseScore();
+        } else {
+            throw new ParticipantNotFoundInMatchException();
+        }
+    }
+
+    @Override
+    public void finishMatch(MatchId matchId) {
         if (!matches.containsKey(matchId)) {
-            throw new IllegalArgumentException("No active match found.");
+            throw new NoActiveMatchException();
         }
         matches.remove(matchId);
     }
@@ -61,5 +73,25 @@ public class LiveWorldCupScoreboard implements Scoreboard {
     @Override
     public List<Match> getSummary() {
         return matches.values().stream().toList();
+    }
+
+
+    // not used version of increase/decrease
+    public void increaseScore(ParticipantName participant) {
+        Optional<Match> optionalMatch = findMatchByParticipant(participant);
+        optionalMatch.ifPresentOrElse(match -> match.getParticipantByName(participant).increaseScore(), () -> {
+            throw new NoActiveMatchException();
+        });
+    }
+
+    public void decreaseScore(ParticipantName participant) {
+        Optional<Match> optionalMatch = findMatchByParticipant(participant);
+        optionalMatch.ifPresentOrElse(match -> match.getParticipantByName(participant).decreaseScore(), () -> {
+            throw new NoActiveMatchException();
+        });
+    }
+
+    private Optional<Match> findMatchByParticipant(ParticipantName participant) {
+        return matches.entrySet().stream().filter(entry -> entry.getKey().toString().contains(participant.name())).map(Map.Entry::getValue).findFirst();
     }
 }
