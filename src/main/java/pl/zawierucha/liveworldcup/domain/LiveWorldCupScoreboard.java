@@ -1,7 +1,7 @@
 package pl.zawierucha.liveworldcup.domain;
 
 import pl.zawierucha.liveworldcup.domain.exceptions.NoActiveMatchException;
-import pl.zawierucha.liveworldcup.api.exceptions.ParticipantAlreadyInMatchException;
+import pl.zawierucha.liveworldcup.domain.exceptions.ParticipantAlreadyInMatchException;
 import pl.zawierucha.liveworldcup.domain.exceptions.ParticipantNotFoundInMatchException;
 
 import java.util.HashMap;

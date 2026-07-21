@@ -1,4 +1,4 @@
-package pl.zawierucha.liveworldcup.api.exceptions;
+package pl.zawierucha.liveworldcup.domain.exceptions;
 
 public class ParticipantAlreadyInMatchException extends RuntimeException {
     public ParticipantAlreadyInMatchException() {
