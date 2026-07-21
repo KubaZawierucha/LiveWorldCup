@@ -4,17 +4,18 @@ import pl.zawierucha.liveworldcup.domain.exceptions.NoActiveMatchException;
 import pl.zawierucha.liveworldcup.domain.exceptions.ParticipantAlreadyInMatchException;
 import pl.zawierucha.liveworldcup.domain.exceptions.ParticipantNotFoundInMatchException;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class LiveWorldCupScoreboard implements Scoreboard {
 
-    public Map<MatchId, Match> matches = new HashMap<>();
+    private final Map<MatchId, Match> matches = new HashMap<>();
+    private long matchOrder = 0L;
 
     @Override
     public void startMatch(MatchParticipant home, MatchParticipant visitor) {
@@ -25,7 +26,7 @@ public class LiveWorldCupScoreboard implements Scoreboard {
         }
 
         MatchId newMatchId = MatchId.fromMatchParticipants(home, visitor);
-        Match newMatch = new Match(home, visitor);
+        Match newMatch = new Match(home, visitor, matchOrder++);
         matches.put(newMatchId, newMatch);
     }
 
@@ -69,29 +70,13 @@ public class LiveWorldCupScoreboard implements Scoreboard {
         matches.remove(matchId);
     }
 
-    // temp impl to check in tests
     @Override
     public List<Match> getSummary() {
-        return matches.values().stream().toList();
-    }
-
-
-    // not used version of increase/decrease
-    public void increaseScore(ParticipantName participant) {
-        Optional<Match> optionalMatch = findMatchByParticipant(participant);
-        optionalMatch.ifPresentOrElse(match -> match.getParticipantByName(participant).increaseScore(), () -> {
-            throw new NoActiveMatchException();
-        });
-    }
-
-    public void decreaseScore(ParticipantName participant) {
-        Optional<Match> optionalMatch = findMatchByParticipant(participant);
-        optionalMatch.ifPresentOrElse(match -> match.getParticipantByName(participant).decreaseScore(), () -> {
-            throw new NoActiveMatchException();
-        });
-    }
-
-    private Optional<Match> findMatchByParticipant(ParticipantName participant) {
-        return matches.entrySet().stream().filter(entry -> entry.getKey().toString().contains(participant.name())).map(Map.Entry::getValue).findFirst();
+        return matches.values()
+                .stream()
+                .sorted(Comparator.comparing(Match::getTotalScore)
+                        .thenComparing(Match::order)
+                        .reversed())
+                .toList();
     }
 }

@@ -2,13 +2,17 @@ package pl.zawierucha.liveworldcup.domain;
 
 import pl.zawierucha.liveworldcup.domain.exceptions.ParticipantNotFoundInMatchException;
 
-public record Match(MatchParticipant home, MatchParticipant visitor) {
+public record Match(MatchParticipant home, MatchParticipant visitor, long order) {
     public ParticipantName getHome() {
         return home.getName();
     }
 
     public ParticipantName getVisitor() {
         return visitor.getName();
+    }
+
+    public int getTotalScore() {
+        return home.getScore() + visitor.getScore();
     }
 
     public MatchParticipant getParticipantByName(ParticipantName name) {
