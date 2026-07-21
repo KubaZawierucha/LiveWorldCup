@@ -37,14 +37,7 @@ public class LiveWorldCupScoreboard implements Scoreboard {
         if (currentMatch == null) {
             throw new NoActiveMatchException();
         }
-
-        if (currentMatch.getHome().equals(participantName)) {
-            currentMatch.home().increaseScore();
-        } else if (currentMatch.getVisitor().equals(participantName)) {
-            currentMatch.visitor().increaseScore();
-        } else {
-            throw new ParticipantNotFoundInMatchException();
-        }
+        currentMatch.getParticipantByName(participantName).increaseScore();
     }
 
     @Override
@@ -53,14 +46,7 @@ public class LiveWorldCupScoreboard implements Scoreboard {
         if (currentMatch == null) {
             throw new NoActiveMatchException();
         }
-
-        if (currentMatch.getHome().equals(participantName)) {
-            currentMatch.home().decreaseScore();
-        } else if (currentMatch.getVisitor().equals(participantName)) {
-            currentMatch.visitor().decreaseScore();
-        } else {
-            throw new ParticipantNotFoundInMatchException();
-        }
+        currentMatch.getParticipantByName(participantName).decreaseScore();
     }
 
     @Override

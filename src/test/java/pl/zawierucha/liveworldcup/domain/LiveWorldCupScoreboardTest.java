@@ -285,22 +285,34 @@ public class LiveWorldCupScoreboardTest {
             scoreboard.increaseScore(matchId, visitor.getName());
         }
 
-        List<String> expected = List.of(
-                "Uruguay-Italy:6-6:3",
-                "Spain-Brazil:10-2:1",
-                "Mexico-Canada:0-5:0",
-                "Argentina-Australia:3-1:4",
-                "Germany-France:2-2:2"
+        List<MatchInfo> expected = List.of(
+                new MatchInfo("Uruguay", "Italy", 6, 6, 3),
+                new MatchInfo("Spain", "Brazil", 10, 2, 1),
+                new MatchInfo("Mexico", "Canada", 0, 5, 0),
+                new MatchInfo("Argentina", "Australia", 3, 1, 4),
+                new MatchInfo("Germany", "France", 2, 2, 2)
         );
 
         // when:
         var summary = scoreboard.getSummary();
 
         // then:
-        List<String> actual = summary.stream()
-                .map(m -> m.home().getName().name() + "-" + m.visitor().getName().name() + ":" + m.home().getScore() + "-" + m.visitor().getScore() + ":" + m.order())
+        List<MatchInfo> actual = summary.stream()
+                .map(MatchInfo::from)
                 .toList();
 
         assertIterableEquals(expected, actual);
+    }
+
+    private record MatchInfo(String home, String visitor, int homeScore, int visitorScore, long order) {
+        static MatchInfo from(Match match) {
+            return new MatchInfo(
+                    match.home().getName().name(),
+                    match.visitor().getName().name(),
+                    match.home().getScore(),
+                    match.visitor().getScore(),
+                    match.order()
+            );
+        }
     }
 }
