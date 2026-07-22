@@ -1,4 +1,16 @@
-# Gemini
+## Summary
+
+Two AI tools were used through the process of creation of this project. First of them was the Gemini - mainly for the
+questions, related to the coding best practices. The second tool was the IntelliJ's Copilot. It was mainly used for:
+
+1. Code completions/suggestions.
+2. Unit tests generation (based on the existing ones).
+3. Code reviews.
+4. Refactor suggestions.
+5. Coding dilemmas analysis (Record vs Class & synchronized vs ReentrantLock).
+6. Concurrency-related code tests generation.
+
+## Gemini
 
 1. "I am writing a simple Java library with Maven build, consisting (probably) of a single service and its unit
    tests. Is there any sense of using Spring or Spring Boot for such project or will it be a kind of an
@@ -17,7 +29,7 @@
    // You now have a map with only the entries where the key contains "Mexico"
    ```
 
-# Copilot
+## Copilot
 
 1. "The score field will be updated frequently. Shouldn't it be a regular class instead of a Record?" +
    MatchParticipant.java in context
