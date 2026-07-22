@@ -393,6 +393,141 @@ public class LiveWorldCupScoreboardTest {
         assertEquals(1, scoreboard.getSummary().size());
     }
 
+    @Test
+    public void shouldReturnOnlyMatchesWithTotalScoreEqualToOrBiggerThanAvg_when_getTheMostInterestingMatchesRequested() {
+        MatchParticipant home = new MatchParticipant(new ParticipantName("Mexico"));
+        MatchParticipant visitor = new MatchParticipant(new ParticipantName("Canada"));
+        scoreboard.startMatch(home, visitor);
+        MatchId matchId = MatchId.fromMatchParticipants(home, visitor);
+        for (int i = 0; i < 5; i++) {
+            scoreboard.increaseScore(matchId, visitor.getName());
+        }
+
+        home = new MatchParticipant(new ParticipantName("Spain"));
+        visitor = new MatchParticipant(new ParticipantName("Brazil"));
+        scoreboard.startMatch(home, visitor);
+        matchId = MatchId.fromMatchParticipants(home, visitor);
+        for (int i = 0; i < 10; i++) {
+            scoreboard.increaseScore(matchId, home.getName());
+        }
+        for (int i = 0; i < 2; i++) {
+            scoreboard.increaseScore(matchId, visitor.getName());
+        }
+
+        home = new MatchParticipant(new ParticipantName("Germany"));
+        visitor = new MatchParticipant(new ParticipantName("France"));
+        scoreboard.startMatch(home, visitor);
+        matchId = MatchId.fromMatchParticipants(home, visitor);
+        for (int i = 0; i < 2; i++) {
+            scoreboard.increaseScore(matchId, home.getName());
+
+            scoreboard.increaseScore(matchId, visitor.getName());
+        }
+
+        home = new MatchParticipant(new ParticipantName("Uruguay"));
+        visitor = new MatchParticipant(new ParticipantName("Italy"));
+        scoreboard.startMatch(home, visitor);
+        matchId = MatchId.fromMatchParticipants(home, visitor);
+        for (int i = 0; i < 6; i++) {
+            scoreboard.increaseScore(matchId, home.getName());
+            scoreboard.increaseScore(matchId, visitor.getName());
+        }
+
+        home = new MatchParticipant(new ParticipantName("Argentina"));
+        visitor = new MatchParticipant(new ParticipantName("Australia"));
+        scoreboard.startMatch(home, visitor);
+        matchId = MatchId.fromMatchParticipants(home, visitor);
+        for (int i = 0; i < 3; i++) {
+            scoreboard.increaseScore(matchId, home.getName());
+        }
+        for (int i = 0; i < 1; i++) {
+            scoreboard.increaseScore(matchId, visitor.getName());
+        }
+
+        List<MatchInfo> expected = List.of(
+                new MatchInfo("Uruguay", "Italy", 6, 6, 3),
+                new MatchInfo("Spain", "Brazil", 10, 2, 1)
+        );
+
+        // when:
+        List<Match> result = scoreboard.getTheMostInterestingMatches();
+
+        // then:
+        List<MatchInfo> actual = result.stream()
+                .map(MatchInfo::from)
+                .toList();
+
+        assertEquals(expected.size(), actual.size());
+        assertTrue(actual.containsAll(expected));
+    }
+
+    @Test
+    public void shouldReturnAllMatches_when_allMatchesAreTiedAndGetTheMostInterestingMatchesRequested() {
+        MatchParticipant home = new MatchParticipant(new ParticipantName("Mexico"));
+        MatchParticipant visitor = new MatchParticipant(new ParticipantName("Canada"));
+        scoreboard.startMatch(home, visitor);
+        MatchId matchId = MatchId.fromMatchParticipants(home, visitor);
+        for (int i = 0; i < 2; i++) {
+            scoreboard.increaseScore(matchId, home.getName());
+            scoreboard.increaseScore(matchId, visitor.getName());
+        }
+
+        home = new MatchParticipant(new ParticipantName("Spain"));
+        visitor = new MatchParticipant(new ParticipantName("Brazil"));
+        scoreboard.startMatch(home, visitor);
+        matchId = MatchId.fromMatchParticipants(home, visitor);
+        for (int i = 0; i < 2; i++) {
+            scoreboard.increaseScore(matchId, home.getName());
+            scoreboard.increaseScore(matchId, visitor.getName());
+        }
+
+        home = new MatchParticipant(new ParticipantName("Germany"));
+        visitor = new MatchParticipant(new ParticipantName("France"));
+        scoreboard.startMatch(home, visitor);
+        matchId = MatchId.fromMatchParticipants(home, visitor);
+        for (int i = 0; i < 2; i++) {
+            scoreboard.increaseScore(matchId, home.getName());
+            scoreboard.increaseScore(matchId, visitor.getName());
+        }
+
+        home = new MatchParticipant(new ParticipantName("Uruguay"));
+        visitor = new MatchParticipant(new ParticipantName("Italy"));
+        scoreboard.startMatch(home, visitor);
+        matchId = MatchId.fromMatchParticipants(home, visitor);
+        for (int i = 0; i < 2; i++) {
+            scoreboard.increaseScore(matchId, home.getName());
+            scoreboard.increaseScore(matchId, visitor.getName());
+        }
+
+        home = new MatchParticipant(new ParticipantName("Argentina"));
+        visitor = new MatchParticipant(new ParticipantName("Australia"));
+        scoreboard.startMatch(home, visitor);
+        matchId = MatchId.fromMatchParticipants(home, visitor);
+        for (int i = 0; i < 2; i++) {
+            scoreboard.increaseScore(matchId, home.getName());
+            scoreboard.increaseScore(matchId, visitor.getName());
+        }
+
+        List<MatchInfo> expected = List.of(
+                new MatchInfo("Uruguay", "Italy", 2, 2, 3),
+                new MatchInfo("Spain", "Brazil", 2, 2, 1),
+                new MatchInfo("Mexico", "Canada", 2, 2, 0),
+                new MatchInfo("Argentina", "Australia", 2, 2, 4),
+                new MatchInfo("Germany", "France", 2, 2, 2)
+        );
+
+        // when:
+        List<Match> result = scoreboard.getTheMostInterestingMatches();
+
+        // then:
+        List<MatchInfo> actual = result.stream()
+                .map(MatchInfo::from)
+                .toList();
+
+        assertEquals(expected.size(), actual.size());
+        assertTrue(actual.containsAll(expected));
+    }
+
     private record MatchInfo(String home, String visitor, int homeScore, int visitorScore, long order) {
         static MatchInfo from(Match match) {
             return new MatchInfo(

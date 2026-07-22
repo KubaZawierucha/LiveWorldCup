@@ -12,4 +12,6 @@ public interface Scoreboard {
     void finishMatch(MatchId matchId);
 
     List<Match> getSummary();
+
+    List<Match> getTheMostInterestingMatches();
 }

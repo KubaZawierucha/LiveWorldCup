@@ -67,7 +67,28 @@ public class LiveWorldCupScoreboard implements Scoreboard {
     @Override
     public List<Match> getSummary() {
         synchronized (lock) {
-            return matches.values().stream().sorted(Comparator.comparing(Match::getTotalScore).thenComparing(Match::order).reversed()).toList();
+            return matches.values()
+                    .stream()
+                    .sorted(
+                            Comparator.comparing(Match::getTotalScore)
+                                    .thenComparing(Match::order)
+                                    .reversed())
+                    .toList();
+        }
+    }
+
+    @Override
+    public List<Match> getTheMostInterestingMatches() {
+        synchronized (lock) {
+            double avgScore = matches.values()
+                    .stream()
+                    .mapToInt(Match::getTotalScore)
+                    .average()
+                    .orElse(0.0);
+            return matches.values()
+                    .stream()
+                    .filter(match -> match.getTotalScore() >= avgScore)
+                    .toList();
         }
     }
 }

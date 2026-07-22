@@ -52,10 +52,6 @@ public class ScoreboardController {
         scoreboard.finishMatch(matchId);
     }
 
-    public void getSummary() {
-        scoreboard.getSummary();
-    }
-
     private void validateParticipants(String homeName, String visitorName) {
         if (homeName == null || visitorName == null) {
             throw new InvalidParticipantNameException("Match participants must be present.");
