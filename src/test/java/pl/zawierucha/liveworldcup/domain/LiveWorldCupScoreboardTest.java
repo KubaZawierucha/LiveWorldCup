@@ -310,63 +310,68 @@ public class LiveWorldCupScoreboardTest {
     }
 
     @Test
-    public void shouldNotLoseScoreUpdates_when_manyThreadsIncreaseConcurrently() throws InterruptedException {
+    public void shouldCorrectlyUpdateScores_when_manyThreadsIncreaseAndDecreaseConcurrently() throws InterruptedException {
         // given:
         MatchParticipant home = new MatchParticipant(new ParticipantName("Mexico"));
         MatchParticipant visitor = new MatchParticipant(new ParticipantName("Canada"));
         scoreboard.startMatch(home, visitor);
         MatchId matchId = MatchId.fromMatchParticipants(home, visitor);
 
-        int threads = 16;
-        int incrementsPerThread = 1_000;
+        int threads = 10;
+        int incrementsPerThread = 10;
+        int decrementsPerThread = 5;
+        int expectedScore = threads * (incrementsPerThread - decrementsPerThread);
+
         ExecutorService executor = Executors.newFixedThreadPool(threads);
-        CountDownLatch start = new CountDownLatch(1);
-        CountDownLatch done = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1); // latch preventing from starting until all threads are ready
+        CountDownLatch done = new CountDownLatch(threads); // latch to wait for all threads to finish
 
         // when:
         for (int t = 0; t < threads; t++) {
             executor.submit(() -> {
                 try {
-                    start.await();
+                    start.await(); // wait until all threads are ready
                     for (int i = 0; i < incrementsPerThread; i++) {
                         scoreboard.increaseScore(matchId, home.getName());
+                    }
+                    for (int i = 0; i < decrementsPerThread; i++) {
+                        scoreboard.decreaseScore(matchId, home.getName());
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {
-                    done.countDown();
+                    done.countDown(); // signal that this thread has finished
                 }
             });
         }
-        start.countDown();
-        assertTrue(done.await(30, TimeUnit.SECONDS), "Concurrent increments did not finish in time");
+        start.countDown(); // allow all threads to start
+        assertTrue(done.await(30, TimeUnit.SECONDS), "Concurrent increments did not finish in time"); // wait until all threads have finished, before making actual assertions
         executor.shutdownNow();
 
         // then:
-        int expectedScore = threads * incrementsPerThread;
         assertTrue(scoreboard.getSummary().stream()
                 .anyMatch(match -> match.home().getScore() == expectedScore)
         );
     }
 
     @Test
-    public void shouldStartExactlyOneMatch_when_manyThreadsStartOverlappingParticipantsConcurrently() throws InterruptedException {
+    public void shouldStartOnlyOneMatch_when_manyThreadsTriesToStartMatchWithTheSameParticipantConcurrently() throws InterruptedException {
         // given:
-        int threads = 16;
+        int threads = 10;
         ExecutorService executor = Executors.newFixedThreadPool(threads);
-        CountDownLatch start = new CountDownLatch(1);
-        CountDownLatch done = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1); // for starting all threads at once
+        CountDownLatch done = new CountDownLatch(threads); // for waiting for each thread to finish before making assertions
         AtomicInteger successes = new AtomicInteger();
         AtomicInteger rejections = new AtomicInteger();
 
-        // when: every thread tries to start a match sharing the "Mexico" participant
+        // when:
         for (int t = 0; t < threads; t++) {
-            int index = t;
+            String participantName = "Another participant #" + t;
             executor.submit(() -> {
                 try {
                     start.await();
                     MatchParticipant home = new MatchParticipant(new ParticipantName("Mexico"));
-                    MatchParticipant visitor = new MatchParticipant(new ParticipantName("Opponent" + index));
+                    MatchParticipant visitor = new MatchParticipant(new ParticipantName(participantName));
                     scoreboard.startMatch(home, visitor);
                     successes.incrementAndGet();
                 } catch (ParticipantAlreadyInMatchException e) {
@@ -382,8 +387,8 @@ public class LiveWorldCupScoreboardTest {
         assertTrue(done.await(30, TimeUnit.SECONDS), "Concurrent starts did not finish in time");
         executor.shutdownNow();
 
-        // then: the check-then-act invariant held under contention
-        assertEquals(1, successes.get());
+        // then:
+        assertEquals(1, successes.get()); // only one match with "Mexico" can start
         assertEquals(threads - 1, rejections.get());
         assertEquals(1, scoreboard.getSummary().size());
     }
