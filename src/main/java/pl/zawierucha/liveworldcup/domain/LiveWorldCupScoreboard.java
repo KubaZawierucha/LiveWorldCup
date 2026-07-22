@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-// TODO my own functionality
 public class LiveWorldCupScoreboard implements Scoreboard {
 
     private final Map<MatchId, Match> matches = new HashMap<>();
