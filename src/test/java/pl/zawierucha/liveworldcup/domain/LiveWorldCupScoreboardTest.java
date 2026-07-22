@@ -7,6 +7,11 @@ import pl.zawierucha.liveworldcup.domain.exceptions.ParticipantAlreadyInMatchExc
 import pl.zawierucha.liveworldcup.domain.exceptions.ParticipantNotFoundInMatchException;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
@@ -302,6 +307,85 @@ public class LiveWorldCupScoreboardTest {
                 .toList();
 
         assertIterableEquals(expected, actual);
+    }
+
+    @Test
+    public void shouldNotLoseScoreUpdates_when_manyThreadsIncreaseConcurrently() throws InterruptedException {
+        // given:
+        MatchParticipant home = new MatchParticipant(new ParticipantName("Mexico"));
+        MatchParticipant visitor = new MatchParticipant(new ParticipantName("Canada"));
+        scoreboard.startMatch(home, visitor);
+        MatchId matchId = MatchId.fromMatchParticipants(home, visitor);
+
+        int threads = 16;
+        int incrementsPerThread = 1_000;
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+
+        // when:
+        for (int t = 0; t < threads; t++) {
+            executor.submit(() -> {
+                try {
+                    start.await();
+                    for (int i = 0; i < incrementsPerThread; i++) {
+                        scoreboard.increaseScore(matchId, home.getName());
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+        start.countDown();
+        assertTrue(done.await(30, TimeUnit.SECONDS), "Concurrent increments did not finish in time");
+        executor.shutdownNow();
+
+        // then:
+        int expectedScore = threads * incrementsPerThread;
+        assertTrue(scoreboard.getSummary().stream()
+                .anyMatch(match -> match.home().getScore() == expectedScore)
+        );
+    }
+
+    @Test
+    public void shouldStartExactlyOneMatch_when_manyThreadsStartOverlappingParticipantsConcurrently() throws InterruptedException {
+        // given:
+        int threads = 16;
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+        AtomicInteger successes = new AtomicInteger();
+        AtomicInteger rejections = new AtomicInteger();
+
+        // when: every thread tries to start a match sharing the "Mexico" participant
+        for (int t = 0; t < threads; t++) {
+            int index = t;
+            executor.submit(() -> {
+                try {
+                    start.await();
+                    MatchParticipant home = new MatchParticipant(new ParticipantName("Mexico"));
+                    MatchParticipant visitor = new MatchParticipant(new ParticipantName("Opponent" + index));
+                    scoreboard.startMatch(home, visitor);
+                    successes.incrementAndGet();
+                } catch (ParticipantAlreadyInMatchException e) {
+                    rejections.incrementAndGet();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+        start.countDown();
+        assertTrue(done.await(30, TimeUnit.SECONDS), "Concurrent starts did not finish in time");
+        executor.shutdownNow();
+
+        // then: the check-then-act invariant held under contention
+        assertEquals(1, successes.get());
+        assertEquals(threads - 1, rejections.get());
+        assertEquals(1, scoreboard.getSummary().size());
     }
 
     private record MatchInfo(String home, String visitor, int homeScore, int visitorScore, long order) {
